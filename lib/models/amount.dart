@@ -18,7 +18,7 @@ class Amount {
     final it = Currencies.find('AED')!;
     print(it.pattern);
     final money = Money.fromBigInt(new BigInt.from(value), it);
-    return money.format("###,###.00");
+    return money.format("CCC ###,###.00");
   }
 
   @override
