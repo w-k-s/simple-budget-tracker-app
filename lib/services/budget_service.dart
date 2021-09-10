@@ -50,3 +50,11 @@ extension Networking on Future<Response> {
     });
   }
 }
+
+Future<T> runCatching<T>(Future<T> future) {
+  try {
+    return future;
+  } catch (e) {
+    return Future.error(e);
+  }
+}

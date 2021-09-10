@@ -58,49 +58,35 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Future<void> _loadAccounts(BudgetService service) async {
-    final handleAccountError = (e) {
+    runCatching(service.getAccounts())
+        .parse((json) => Accounts.fromJson(json))
+        .then((_accounts) => setState(() {
+              accounts = _accounts;
+            }))
+        .catchError((e) {
       print(e);
-      if (accounts == null) {
+      if (records == null) {
         setState(() {
           error = "Failed to load accounts";
         });
       }
-    };
-
-    try {
-      await service
-          .getAccounts()
-          .parse((json) => Accounts.fromJson(json))
-          .then((_accounts) => setState(() {
-                accounts = _accounts;
-              }))
-          .catchError(handleAccountError);
-    } catch (e) {
-      handleAccountError(e);
-    }
+    });
   }
 
   Future<void> _loadRecords(BudgetService service, int accountId) async {
-    final handleRecordsError = (e) {
+    runCatching(service.getRecords(accountId))
+        .parse((json) => Records.fromJson(json))
+        .then((_records) => setState(() {
+              records = _records;
+            }))
+        .catchError((e) {
       print(e);
       if (records == null) {
         setState(() {
           error = "Failed to load records";
         });
       }
-    };
-
-    try {
-      await service
-          .getRecords(accountId)
-          .parse((json) => Records.fromJson(json))
-          .then((_records) => setState(() {
-                records = _records;
-              }))
-          .catchError(handleRecordsError);
-    } catch (e) {
-      handleRecordsError(e);
-    }
+    });
   }
 
   Widget _buildBody(BuildContext context) {
