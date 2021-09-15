@@ -11,6 +11,19 @@ enum Type {
   TRANSFER,
 }
 
+extension TypeName on Type {
+  String name() {
+    switch (this) {
+      case Type.INCOME:
+        return "Income";
+      case Type.EXPENSE:
+        return "Expense";
+      case Type.TRANSFER:
+        return "Transfer";
+    }
+  }
+}
+
 @JsonSerializable()
 class Beneficiary {
   final int id;

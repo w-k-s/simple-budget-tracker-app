@@ -36,6 +36,8 @@ class Accounts {
 
   Account? get primary => accounts.isEmpty ? null : accounts.first;
 
+  int get length => accounts.length;
+
   @override
   int get hashCode => hashList(this.accounts);
 

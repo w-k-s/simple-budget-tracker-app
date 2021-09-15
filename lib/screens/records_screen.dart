@@ -2,6 +2,7 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 import '../models/record.dart';
+import 'create_record_screen.dart';
 import '../models/account.dart';
 import '../services/budget_service.dart';
 import 'package:provider/provider.dart';
@@ -19,16 +20,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   String? error;
   Records? records;
   Accounts? accounts;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(accounts?.primary?.name ?? "Accounts"),
-      ),
-      body: _buildBody(context),
-    );
-  }
+  Account? selectedAccount;
 
   @override
   void initState() {
@@ -41,52 +33,54 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   void loadInitialData(BudgetService service) async {
-    setState(() {
-      isLoading = true;
-    });
+    try {
+      setState(() => isLoading = true);
 
-    await _loadAccounts(service);
+      final _accounts = await _loadAccounts(service);
+      final _primaryAccount = _accounts.primary;
+      var _records;
+      if (_primaryAccount != null) {
+        _records = await _loadRecords(service, _primaryAccount.id);
+      }
 
-    final primaryAccount = accounts?.primary;
-    if (primaryAccount != null) {
-      await _loadRecords(service, primaryAccount.id);
+      setState(() {
+        isLoading = false;
+        accounts = _accounts;
+        records = _records;
+        selectedAccount = _primaryAccount;
+      });
+    } catch (e) {
+      print(e);
+      error = "$e";
     }
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
-  Future<void> _loadAccounts(BudgetService service) async {
-    runCatching(service.getAccounts())
-        .parse((json) => Accounts.fromJson(json))
-        .then((_accounts) => setState(() {
-              accounts = _accounts;
-            }))
-        .catchError((e) {
-      print(e);
-      if (records == null) {
-        setState(() {
-          error = "Failed to load accounts";
-        });
-      }
-    });
+  Future<Accounts> _loadAccounts(BudgetService service) async {
+    return service.getAccounts().onSuccess((json) => Accounts.fromJson(json));
   }
 
-  Future<void> _loadRecords(BudgetService service, int accountId) async {
-    runCatching(service.getRecords(accountId))
-        .parse((json) => Records.fromJson(json))
-        .then((_records) => setState(() {
-              records = _records;
-            }))
-        .catchError((e) {
-      print(e);
-      if (records == null) {
-        setState(() {
-          error = "Failed to load records";
-        });
-      }
-    });
+  Future<Records> _loadRecords(BudgetService service, int accountId) async {
+    return service
+        .getRecords(accountId)
+        .onSuccess((json) => Records.fromJson(json));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(selectedAccount?.name ?? "Accounts"),
+      ),
+      body: _buildBody(context),
+      floatingActionButton: new Visibility(
+        visible: selectedAccount != null,
+        child: new FloatingActionButton(
+          onPressed: _addNewRecord,
+          child: new Icon(Icons.add),
+          backgroundColor: Colors.red,
+        ),
+      ),
+    );
   }
 
   Widget _buildBody(BuildContext context) {
@@ -97,7 +91,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
 
     final _error = error;
-    if (_error != null) {
+    if (records == null && accounts == null && _error != null) {
       return Center(
         child: Text(
           _error,
@@ -152,5 +146,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
         );
       },
     );
+  }
+
+  void _addNewRecord() {
+    Navigator.push(context, MaterialPageRoute(builder: (context) {
+      return CreateRecordScreen(selectedAccount: selectedAccount);
+    }));
   }
 }

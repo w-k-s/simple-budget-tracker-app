@@ -15,6 +15,9 @@ abstract class BudgetService extends ChopperService {
   @Get(path: "/accounts")
   Future<Response> getAccounts();
 
+  @Get(path: "/categories")
+  Future<Response> getCategories();
+
   static BudgetService create() {
     final client = ChopperClient(
       baseUrl: 'https://budget.w-k-s.io',
@@ -30,7 +33,7 @@ abstract class BudgetService extends ChopperService {
 }
 
 extension Networking on Future<Response> {
-  Future<T> parse<T>(T Function(dynamic) f) {
+  Future<T> onSuccess<T>(T Function(dynamic) f) {
     return this.then((response) {
       if (response.body == null) {
         return Future.error("Empty response");
@@ -48,13 +51,5 @@ extension Networking on Future<Response> {
         return Future.error(e.toString());
       }
     });
-  }
-}
-
-Future<T> runCatching<T>(Future<T> future) {
-  try {
-    return future;
-  } catch (e) {
-    return Future.error(e);
   }
 }
