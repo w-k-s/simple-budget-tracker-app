@@ -55,6 +55,28 @@ class _RecordsScreenState extends State<RecordsScreen> {
     }
   }
 
+  void _refresh(BuildContext context) async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      final budgetService = context.read<BudgetService>();
+      final _records = await _loadRecords(budgetService, selectedAccount!.id);
+      setState(() {
+        records = _records;
+      });
+    } catch (e) {
+      setState(() {
+        error = e.toString();
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   Future<Accounts> _loadAccounts(BudgetService service) async {
     return service.getAccounts().onSuccess((json) => Accounts.fromJson(json));
   }
@@ -151,6 +173,6 @@ class _RecordsScreenState extends State<RecordsScreen> {
   void _addNewRecord() {
     Navigator.push(context, MaterialPageRoute(builder: (context) {
       return CreateRecordScreen(selectedAccount: selectedAccount);
-    }));
+    })).then((value) => _refresh(context));
   }
 }

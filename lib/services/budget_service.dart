@@ -3,6 +3,7 @@ import 'dart:developer' as dev;
 import 'package:chopper/chopper.dart';
 import 'package:flutter/material.dart';
 import '../models/record.dart';
+import '../models/api_error.dart';
 import 'header_interceptor.dart';
 
 part 'budget_service.chopper.dart';
@@ -11,6 +12,10 @@ part 'budget_service.chopper.dart';
 abstract class BudgetService extends ChopperService {
   @Get(path: "/accounts/{id}/records?latest")
   Future<Response> getRecords(@Path("id") int accountId);
+
+  @Post(path: "/accounts/{id}/records")
+  Future<Response> createRecord(
+      @Path("id") int accountId, @Body() CreateRecord createRecord);
 
   @Get(path: "/accounts")
   Future<Response> getAccounts();
@@ -35,13 +40,21 @@ abstract class BudgetService extends ChopperService {
 extension Networking on Future<Response> {
   Future<T> onSuccess<T>(T Function(dynamic) f) {
     return this.then((response) {
-      if (response.body == null) {
-        return Future.error("Empty response");
+      if (!response.isSuccessful) {
+        var message = "Request failed";
+        var errorBody = response.error;
+        if (errorBody != null && errorBody is Map<String, dynamic>) {
+          try {
+            final problem = Problem.fromJson(errorBody);
+            message = problem.detail;
+          } catch (e) {}
+        }
+
+        return Future.error(message);
       }
 
-      if (!response.isSuccessful) {
-        // Try to parse error response
-        return Future.error("Request failed.");
+      if (response.body == null) {
+        return Future.error("Empty response");
       }
 
       try {

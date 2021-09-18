@@ -6,6 +6,7 @@ import '../services/budget_service.dart';
 import 'package:date_time_picker/date_time_picker.dart';
 import '../models/account.dart';
 import '../models/category.dart';
+import '../models/amount.dart';
 
 class CreateRecordScreen extends StatefulWidget {
   final Account? selectedAccount;
@@ -25,7 +26,7 @@ class _CreateRecordScreenState extends State<CreateRecordScreen> {
       ),
       body: new Container(
           padding: new EdgeInsets.fromLTRB(20, 0, 20, 0),
-          child: new CreateRecordForm()),
+          child: new CreateRecordForm(selectedAccount: widget.selectedAccount)),
     );
   }
 }
@@ -42,6 +43,7 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
   final _formKey = GlobalKey<FormState>();
 
   bool isLoading = false;
+  bool isSubmitting = false;
   Accounts accounts = Accounts(accounts: []);
   Categories categories = Categories(categories: []);
   String? error;
@@ -51,6 +53,8 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
   Account? selectedAccount;
   Category? selectedCategory;
   Account? selectedBeneficiary;
+  String amount = "0.00";
+  String title = "";
 
   @override
   void initState() {
@@ -59,13 +63,18 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
     WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
       final service = context.read<BudgetService>();
 
-      loadInitialData(service);
+      _loadInitialData(service);
     });
   }
 
-  void loadInitialData(BudgetService service) async {
+  void _loadInitialData(BudgetService service) async {
     try {
-      setState(() => isLoading = true);
+      setState(() {
+        isLoading = true;
+        selectedRecordType = Type.EXPENSE;
+        selectedDateTime = DateTime.now().toLocal();
+        selectedAccount = widget.selectedAccount;
+      });
 
       final _accounts = await _loadAccounts(service);
       final _categories = await _loadCategories(service);
@@ -74,7 +83,7 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
         isLoading = false;
         accounts = _accounts;
         categories = _categories;
-        selectedAccount = widget.selectedAccount;
+        selectedCategory = _categories.first;
       });
     } catch (e) {
       print(e);
@@ -90,6 +99,38 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
     return service
         .getCategories()
         .onSuccess((json) => Categories.fromJson(json));
+  }
+
+  void _submit(BuildContext context) async {
+    Transfer? transfer;
+
+    if (this.selectedRecordType == Type.TRANSFER) {
+      transfer =
+          Transfer(beneficiary: Beneficiary(id: this.selectedBeneficiary!.id));
+    }
+
+    final request = CreateRecord(
+      type: this.selectedRecordType!,
+      category: this.selectedCategory!,
+      amount: Amount.parseDecimal(selectedAccount!.currency, this.amount),
+      note: this.title,
+      dateUTC: this.selectedDateTime!.toUtc(),
+      transfer: transfer,
+    );
+
+    try {
+      final budgetService = context.read<BudgetService>();
+      await budgetService
+          .createRecord(this.selectedAccount!.id, request)
+          .onSuccess((json) => Record.fromJson(json));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Record Created"),
+      ));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.toString()),
+      ));
+    }
   }
 
   @override
@@ -110,7 +151,7 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButton<Type>(
-              value: selectedRecordType ?? Type.EXPENSE,
+              value: selectedRecordType,
               icon: const Icon(Icons.arrow_downward),
               iconSize: 24,
               underline: Container(
@@ -129,7 +170,7 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
                 );
               }).toList()),
           DropdownButton<Category>(
-              value: selectedCategory ?? categories.first,
+              value: selectedCategory,
               icon: const Icon(Icons.arrow_downward),
               iconSize: 24,
               underline: Container(
@@ -185,6 +226,9 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
               }
               return null;
             },
+            onSaved: (value) {
+              title = value ?? "";
+            },
           ),
           TextFormField(
             decoration: const InputDecoration(
@@ -195,39 +239,54 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[0-9\.,]'))
             ],
+            onSaved: (value) {
+              amount = value ?? "0.00";
+            },
             validator: (value) {
-              if (value == null ||
-                  value.isEmpty ||
-                  double.tryParse(value) == null) {
+              if (value == null || value.isEmpty) {
                 return 'Please enter an amount';
+              }
+              final amount = double.tryParse(value) ?? 0;
+              if (amount == 0 || amount < 0) {
+                return "Amount must not be less than or equal to 0";
               }
               return null;
             },
           ),
           DateTimePicker(
-            type: DateTimePickerType.date,
-            dateMask: 'd MMM, yyyy',
-            initialValue: DateTime.now().toString(),
-            firstDate: DateTime(2000),
-            lastDate: DateTime(2100),
-            dateLabelText: 'Date',
-            onChanged: (val) {
-              selectedDateTime = DateTime.parse(val);
-            },
-          ),
+              type: DateTimePickerType.date,
+              dateMask: 'd MMM, yyyy',
+              initialValue: DateTime.now().toString(),
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              dateLabelText: 'Date',
+              onSaved: (val) {
+                selectedDateTime = DateTime.parse(val!);
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a date';
+                }
+                return null;
+              }),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: ElevatedButton(
-              onPressed: () {
-                // Validate returns true if the form is valid, or false otherwise.
-                if (_formKey.currentState!.validate()) {
-                  // If the form is valid, display a snackbar. In the real world,
-                  // you'd often call a server or save the information in a database.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Processing Data')),
-                  );
-                }
-              },
+              onPressed: isSubmitting
+                  ? null
+                  : () {
+                      // Validate returns true if the form is valid, or false otherwise.
+                      if (_formKey.currentState!.validate()) {
+                        _formKey.currentState!.save();
+                        setState(() {
+                          isSubmitting = true;
+                        });
+                        _submit(context);
+                        setState(() {
+                          isSubmitting = false;
+                        });
+                      }
+                    },
               child: const Text('Submit'),
             ),
           ),

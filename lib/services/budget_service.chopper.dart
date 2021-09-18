@@ -24,6 +24,15 @@ class _$BudgetService extends BudgetService {
   }
 
   @override
+  Future<Response<dynamic>> createRecord(
+      int accountId, CreateRecord createRecord) {
+    final $url = '/api/v1/accounts/$accountId/records';
+    final $body = createRecord;
+    final $request = Request('POST', $url, client.baseUrl, body: $body);
+    return client.send<dynamic, dynamic>($request);
+  }
+
+  @override
   Future<Response<dynamic>> getAccounts() {
     final $url = '/api/v1/accounts';
     final $request = Request('GET', $url, client.baseUrl);

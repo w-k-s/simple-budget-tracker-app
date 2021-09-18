@@ -143,3 +143,26 @@ Map<String, dynamic> _$RecordsToJson(Records instance) => <String, dynamic>{
       'summary': instance.summary,
       'search': instance.search,
     };
+
+CreateRecord _$CreateRecordFromJson(Map<String, dynamic> json) {
+  return CreateRecord(
+    note: json['note'] as String,
+    category: Category.fromJson(json['category'] as Map<String, dynamic>),
+    amount: Amount.fromJson(json['amount'] as Map<String, dynamic>),
+    type: _$enumDecode(_$TypeEnumMap, json['type']),
+    dateUTC: DateTime.parse(json['date'] as String),
+    transfer: json['transfer'] == null
+        ? null
+        : Transfer.fromJson(json['transfer'] as Map<String, dynamic>),
+  );
+}
+
+Map<String, dynamic> _$CreateRecordToJson(CreateRecord instance) =>
+    <String, dynamic>{
+      'note': instance.note,
+      'category': instance.category,
+      'amount': instance.amount,
+      'type': _$TypeEnumMap[instance.type],
+      'date': instance.dateUTC.toIso8601String(),
+      'transfer': instance.transfer,
+    };

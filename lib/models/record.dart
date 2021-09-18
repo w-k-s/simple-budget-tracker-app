@@ -197,3 +197,25 @@ class Records {
       o.summary == summary &&
       o.search == search;
 }
+
+@JsonSerializable()
+class CreateRecord {
+  final String note;
+  final Category category;
+  final Amount amount;
+  final Type type;
+  @JsonKey(name: "date")
+  final DateTime dateUTC;
+  final Transfer? transfer;
+  CreateRecord(
+      {required this.note,
+      required this.category,
+      required this.amount,
+      required this.type,
+      required this.dateUTC,
+      this.transfer});
+  factory CreateRecord.fromJson(Map<String, dynamic> json) =>
+      _$CreateRecordFromJson(json);
+
+  Map<String, dynamic> toJson() => _$CreateRecordToJson(this);
+}
