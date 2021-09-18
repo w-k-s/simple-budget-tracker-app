@@ -132,9 +132,14 @@ class Record {
 class RecordsSummary {
   final Amount totalIncome;
   final Amount totalExpenses;
+
   RecordsSummary({required this.totalIncome, required this.totalExpenses});
+
   factory RecordsSummary.fromJson(Map<String, dynamic> json) =>
       _$RecordsSummaryFromJson(json);
+
+  factory RecordsSummary.empty(String currency) => RecordsSummary(
+      totalIncome: Amount.zero(currency), totalExpenses: Amount.zero(currency));
 
   Map<String, dynamic> toJson() => _$RecordsSummaryToJson(this);
 
@@ -156,9 +161,14 @@ class RecordsSummary {
 class SearchParameters {
   final DateTime from;
   final DateTime to;
+
   SearchParameters({required this.from, required this.to});
+
   factory SearchParameters.fromJson(Map<String, dynamic> json) =>
       _$SearchParametersFromJson(json);
+
+  factory SearchParameters.empty() => SearchParameters(
+      from: DateTime.now().toUtc(), to: DateTime.now().toUtc());
 
   Map<String, dynamic> toJson() => _$SearchParametersToJson(this);
 
@@ -177,11 +187,18 @@ class Records {
   final List<Record> records;
   final RecordsSummary summary;
   final SearchParameters search;
+
   Records({required this.records, required this.summary, required this.search});
+
   factory Records.fromJson(Map<String, dynamic> json) =>
       _$RecordsFromJson(json);
 
   Map<String, dynamic> toJson() => _$RecordsToJson(this);
+
+  factory Records.empty(String currency) => Records(
+      records: <Record>[],
+      summary: RecordsSummary.empty(currency),
+      search: SearchParameters.empty());
 
   @override
   int get hashCode => hashValues(

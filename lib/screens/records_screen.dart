@@ -1,5 +1,3 @@
-import 'dart:developer' as dev;
-
 import 'package:flutter/material.dart';
 import '../models/record.dart';
 import 'create_record_screen.dart';
@@ -27,64 +25,58 @@ class _RecordsScreenState extends State<RecordsScreen> {
     super.initState();
 
     WidgetsBinding.instance?.addPostFrameCallback((timeStamp) {
-      final service = context.read<BudgetService>();
-      loadInitialData(service);
+      loadInitialData(context);
     });
   }
 
-  void loadInitialData(BudgetService service) async {
-    try {
-      setState(() => isLoading = true);
-
-      final _accounts = await _loadAccounts(service);
-      final _primaryAccount = _accounts.primary;
-      var _records;
-      if (_primaryAccount != null) {
-        _records = await _loadRecords(service, _primaryAccount.id);
-      }
-
-      setState(() {
-        isLoading = false;
-        accounts = _accounts;
-        records = _records;
-        selectedAccount = _primaryAccount;
-      });
-    } catch (e) {
-      print(e);
-      error = "$e";
-    }
+  void loadInitialData(BuildContext context) async {
+    await _setLoading(true)
+        .then((_) => _loadAccounts(context))
+        .then((_) => _loadRecords(context))
+        .whenComplete(() => _setLoading(false));
   }
 
-  void _refresh(BuildContext context) async {
-    try {
-      setState(() {
-        isLoading = true;
-      });
-
-      final budgetService = context.read<BudgetService>();
-      final _records = await _loadRecords(budgetService, selectedAccount!.id);
-      setState(() {
-        records = _records;
-      });
-    } catch (e) {
-      setState(() {
-        error = e.toString();
-      });
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
-
-  Future<Accounts> _loadAccounts(BudgetService service) async {
-    return service.getAccounts().onSuccess((json) => Accounts.fromJson(json));
-  }
-
-  Future<Records> _loadRecords(BudgetService service, int accountId) async {
+  Future<void> _loadAccounts(BuildContext context) async {
+    final service = context.read<BudgetService>();
     return service
-        .getRecords(accountId)
-        .onSuccess((json) => Records.fromJson(json));
+        .getAccounts()
+        .onSuccess((json) => Accounts.fromJson(json))
+        .then((_accounts) {
+      setState(() {
+        accounts = _accounts;
+        selectedAccount = _accounts.primary;
+      });
+    }).catchError((e) {
+      setState(() {
+        error = e.message;
+      });
+    });
+  }
+
+  Future<void> _loadRecords(BuildContext context) async {
+    final service = context.read<BudgetService>();
+    if (selectedAccount == null) {
+      return Future.value(Records.empty("USD"));
+    }
+    return service
+        .getRecords(selectedAccount!.id)
+        .onSuccess((json) => Records.fromJson(json))
+        .then((_records) {
+      setState(() {
+        records = _records;
+      });
+    }).catchError((e) {
+      setState(() {
+        error = e.message;
+      });
+    });
+  }
+
+  Future<void> _setLoading(bool loading) {
+    setState(() {
+      isLoading = loading;
+    });
+    return Future.value();
   }
 
   @override
@@ -173,6 +165,8 @@ class _RecordsScreenState extends State<RecordsScreen> {
   void _addNewRecord() {
     Navigator.push(context, MaterialPageRoute(builder: (context) {
       return CreateRecordScreen(selectedAccount: selectedAccount);
-    })).then((value) => _refresh(context));
+    })).then((_) => _setLoading(true)
+        .then((_) => _loadRecords(context))
+        .whenComplete(() => _setLoading(false)));
   }
 }

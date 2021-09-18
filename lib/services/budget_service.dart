@@ -41,28 +41,76 @@ extension Networking on Future<Response> {
   Future<T> onSuccess<T>(T Function(dynamic) f) {
     return this.then((response) {
       if (!response.isSuccessful) {
-        var message = "Request failed";
-        var errorBody = response.error;
-        if (errorBody != null && errorBody is Map<String, dynamic>) {
+        final errorBody = response.error;
+        var networkingException = NetworkingException(
+            NetworkingExceptionType.InternalServerError,
+            message: response.error.toString());
+
+        if (errorBody is Map<String, dynamic>) {
           try {
             final problem = Problem.fromJson(errorBody);
-            message = problem.detail;
+            networkingException = problem.toNetworkingException();
           } catch (e) {}
         }
 
-        return Future.error(message);
+        return Future.error(networkingException);
       }
 
       if (response.body == null) {
-        return Future.error("Empty response");
+        return Future.error(NetworkingException(
+            NetworkingExceptionType.EmptyResponse,
+            message: "Empty response"));
       }
 
       try {
         return Future.value(f(response.body));
       } catch (e) {
-        debugPrint(e.toString());
-        return Future.error(e.toString());
+        return Future.error(NetworkingException(
+            NetworkingExceptionType.Deserialization,
+            message: e.toString()));
       }
     });
   }
+}
+
+extension ToNetworkingException on Problem {
+  NetworkingException toNetworkingException() {
+    final type = networkingExceptionType();
+    final message = this.detail;
+    return NetworkingException(type, message: message);
+  }
+
+  NetworkingExceptionType networkingExceptionType() {
+    switch (this.status) {
+      case 404:
+        return NetworkingExceptionType.NotFound;
+      case 401:
+        return NetworkingExceptionType.Authentication;
+      case 403:
+        return NetworkingExceptionType.Authorization;
+      case 400:
+        return NetworkingExceptionType.Validation;
+      default:
+        return NetworkingExceptionType.InternalServerError;
+    }
+  }
+}
+
+enum NetworkingExceptionType {
+  InternalServerError,
+  NotFound,
+  EmptyResponse,
+  Validation,
+  Authentication,
+  Authorization,
+  Deserialization
+}
+
+class NetworkingException implements Exception {
+  NetworkingExceptionType type;
+  String message;
+  NetworkingException(this.type, {required this.message}) {}
+
+  @override
+  String toString() => this.message;
 }
