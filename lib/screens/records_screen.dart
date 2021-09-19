@@ -171,10 +171,14 @@ class CalendarMonthListItem implements RecordListTile {
 
   @override
   Widget buildTile(BuildContext context) {
-    return Text(
-      dateFormat.format(calendarMonth.month.toLocal()),
-      style: Theme.of(context).textTheme.headline5,
-    );
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(
+            dateFormat.format(calendarMonth.month.toLocal()),
+            style: Theme.of(context).textTheme.headline5,
+          ))
+    ]);
   }
 }
 
@@ -186,10 +190,12 @@ class DateListItem implements RecordListTile {
 
   @override
   Widget buildTile(BuildContext context) {
-    return Text(
-      dateFormat.format(date.toLocal()),
-      style: Theme.of(context).textTheme.headline6,
-    );
+    return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          dateFormat.format(date.toLocal()),
+          style: Theme.of(context).textTheme.bodyText1,
+        ));
   }
 }
 
@@ -202,11 +208,10 @@ class RecordItem implements RecordListTile {
     return Card(
       elevation: 4,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(0.0),
         child: ListTile(
           title: Text(record.note),
-          subtitle: Text(
-              "${new DateFormat("yyyy-MMM-dd").format(record.dateUTC.toLocal())} • ${record.category.name}"),
+          subtitle: Text("${record.category.name}"),
           trailing: Text(record.amount.toString()),
         ),
       ),
@@ -273,7 +278,6 @@ class RecordsViewModel {
       }
     }
 
-    debugPrint(expensesPerMonth.toString());
     final items = <RecordListTile>[];
     for (final monthlyEntry in expensesPerMonth.entries) {
       final month = monthlyEntry.key;
