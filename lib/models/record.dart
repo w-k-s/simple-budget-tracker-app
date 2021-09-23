@@ -143,6 +143,8 @@ class RecordsSummary {
 
   Map<String, dynamic> toJson() => _$RecordsSummaryToJson(this);
 
+  Amount get balance => this.totalIncome + this.totalExpenses;
+
   @override
   int get hashCode => hashValues(this.totalIncome, this.totalExpenses);
 

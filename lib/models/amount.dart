@@ -29,6 +29,13 @@ class Amount {
     return money.format("CCC ###,###.00");
   }
 
+  operator +(Amount other) {
+    if (this.currency != other.currency) {
+      throw Exception("Mismatching currencies");
+    }
+    return Amount(currency: this.currency, value: this.value + other.value);
+  }
+
   @override
   operator ==(o) => o is Amount && o.currency == currency && o.value == value;
 
