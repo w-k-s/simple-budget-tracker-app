@@ -7,6 +7,9 @@ import 'package:date_time_picker/date_time_picker.dart';
 import '../models/account.dart';
 import '../models/category.dart';
 import '../models/amount.dart';
+import 'category_selection_screen.dart';
+import 'package:currency_text_input_formatter/currency_text_input_formatter.dart';
+import 'package:flutter/cupertino.dart';
 
 class CreateRecordScreen extends StatefulWidget {
   final Account? selectedAccount;
@@ -56,6 +59,8 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
   String amount = "0.00";
   String title = "";
 
+  TextEditingController _categoryController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +70,12 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
 
       _loadInitialData(service);
     });
+  }
+
+  @override
+  void dispose() {
+    _categoryController.dispose();
+    super.dispose();
   }
 
   void _loadInitialData(BudgetService service) async {
@@ -78,6 +89,8 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
 
       final _accounts = await _loadAccounts(service);
       final _categories = await _loadCategories(service);
+
+      _categoryController.text = _categories.first?.name ?? "";
 
       setState(() {
         isLoading = false;
@@ -133,6 +146,18 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
     }
   }
 
+  void _selectCategory() async {
+    final Category _category =
+        await Navigator.push(context, MaterialPageRoute(builder: (context) {
+      return CategorySelectionScreen();
+    }));
+
+    _categoryController.text = _category.name;
+    setState(() {
+      selectedCategory = _category;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -144,51 +169,52 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
     return _buildForm(context);
   }
 
+  final _recordTypeSegmentedControllerChildren = {
+    Type.INCOME: Text(
+      "Income",
+      style: TextStyle(color: Colors.white),
+    ),
+    Type.EXPENSE: Text("Expense", style: TextStyle(color: Colors.white)),
+    Type.TRANSFER: Text("Transfer", style: TextStyle(color: Colors.white))
+  };
+
   Form _buildForm(BuildContext context) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          DropdownButton<Type>(
-              value: selectedRecordType,
-              icon: const Icon(Icons.arrow_downward),
-              iconSize: 24,
-              underline: Container(
-                height: 2,
-                color: Colors.deepPurpleAccent,
-              ),
-              onChanged: (Type? newValue) {
-                setState(() {
-                  selectedRecordType = newValue;
-                });
+          CupertinoSegmentedControl<Type>(
+            children: _recordTypeSegmentedControllerChildren,
+            groupValue: selectedRecordType,
+            borderColor: Colors.blueAccent,
+            selectedColor: Colors.blueAccent,
+            unselectedColor: Colors.transparent,
+            onValueChanged: (index) {
+              setState(() {
+                selectedRecordType = index as Type;
+              });
+            },
+          ),
+          TextFormField(
+              decoration: const InputDecoration(
+                  hintText: 'Category of record',
+                  labelText: 'Category',
+                  counterText: ""),
+              maxLength: 50,
+              textCapitalization: TextCapitalization.sentences,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please select a category';
+                }
+                return null;
               },
-              items: Type.values.map<DropdownMenuItem<Type>>((Type value) {
-                return DropdownMenuItem<Type>(
-                  value: value,
-                  child: Text(value.name()),
-                );
-              }).toList()),
-          DropdownButton<Category>(
-              value: selectedCategory,
-              icon: const Icon(Icons.arrow_downward),
-              iconSize: 24,
-              underline: Container(
-                height: 2,
-                color: Colors.deepPurpleAccent,
-              ),
-              onChanged: (Category? newValue) {
-                setState(() {
-                  selectedCategory = newValue;
-                });
+              onSaved: (value) {
+                title = value ?? "";
               },
-              items: categories.categories
-                  .map<DropdownMenuItem<Category>>((Category value) {
-                return DropdownMenuItem<Category>(
-                  value: value,
-                  child: Text(value.name),
-                );
-              }).toList()),
+              controller: _categoryController,
+              onTap: () => {_selectCategory()},
+              readOnly: true),
           Visibility(
               visible:
                   selectedRecordType == Type.TRANSFER && accounts.length != 1,
@@ -237,7 +263,8 @@ class _CreateRecordFormState extends State<CreateRecordForm> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9\.,]'))
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9\.,]')),
+              CurrencyTextInputFormatter(symbol: ""),
             ],
             onSaved: (value) {
               amount = value ?? "0.00";

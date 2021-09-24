@@ -40,4 +40,6 @@ class Categories {
 
   @override
   int get hashCode => hashList(categories);
+
+  bool get isEmpty => categories.isEmpty;
 }
