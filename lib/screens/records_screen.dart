@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/record.dart';
 import 'create_record_screen.dart';
 import '../models/account.dart';
+import '../models/amount.dart';
 import '../services/budget_service.dart';
+import '../widgets/balance_summary.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -183,38 +186,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Widget _buildRecordsList(BuildContext context) {
-    return Column(children: [
-      Card(
-        elevation: 4,
-        margin: const EdgeInsets.only(left: 16.0, right: 16.0),
-        color: Colors.blueAccent,
-        child: Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Row(children: [
-                  Expanded(child: Text("Total Income")),
-                  Text(records?.summary.totalIncome.toString() ?? "")
-                ]),
-                Row(children: [
-                  Expanded(child: Text("Total Expense")),
-                  Text(records?.summary.totalExpenses.toString() ?? "")
-                ]),
-                Row(children: [
-                  Expanded(child: Text("Balance")),
-                  Text(records?.summary.balance.toString() ?? "")
-                ])
-              ],
-            )),
-      ),
-      Expanded(
-          child: ListView.builder(
-              itemCount: records?.items.length ?? 0,
-              padding: EdgeInsets.all(8),
-              itemBuilder: (context, index) {
-                return records!.items[index].buildTile(context);
-              }))
-    ]);
+    return ListView.builder(
+        itemCount: records?.items.length ?? 0,
+        padding: EdgeInsets.all(8),
+        itemBuilder: (context, index) {
+          return records!.items[index].buildTile(context);
+        });
   }
 
   void _addNewRecord() {
@@ -228,6 +205,21 @@ class _RecordsScreenState extends State<RecordsScreen> {
 
 abstract class RecordListTile {
   Widget buildTile(BuildContext context);
+}
+
+class AccountSummaryListItem implements RecordListTile {
+  RecordsSummary summary;
+
+  AccountSummaryListItem({required this.summary});
+
+  @override
+  Widget buildTile(BuildContext context) {
+    return BalanceSummary(
+        totalExpenses: this.summary.totalExpenses.toString(),
+        totalIncome: this.summary.totalIncome.toString(),
+        balance: this.summary.balance.toString(),
+        margin: const EdgeInsets.only(left: 8.0, right: 8.0));
+  }
 }
 
 class CalendarMonthListItem implements RecordListTile {
@@ -246,6 +238,24 @@ class CalendarMonthListItem implements RecordListTile {
             style: Theme.of(context).textTheme.headline5,
           ))
     ]);
+  }
+}
+
+class MonthSummaryLlistItem implements RecordListTile {
+  final Amount totalExpenses;
+  final Amount totalIncome;
+
+  MonthSummaryLlistItem(
+      {required this.totalExpenses, required this.totalIncome});
+
+  @override
+  Widget buildTile(BuildContext context) {
+    return BalanceSummary(
+        totalExpenses: this.totalExpenses.toString(),
+        totalIncome: this.totalIncome.toString(),
+        balance: (this.totalIncome + this.totalExpenses).toString(),
+        color: Colors.grey.shade700,
+        margin: const EdgeInsets.only(left: 8.0, right: 8.0));
   }
 }
 
@@ -314,6 +324,7 @@ class RecordsViewModel {
 
   factory RecordsViewModel.fromRecords(Records records) {
     final recordsList = records.records;
+    final currency = records.summary.balance.currency;
 
     if (recordsList.isEmpty) {
       return RecordsViewModel(items: [], summary: records.summary);
@@ -347,11 +358,18 @@ class RecordsViewModel {
     }
 
     final items = <RecordListTile>[];
+    items.add(AccountSummaryListItem(summary: records.summary));
+
     for (final monthlyEntry in expensesPerMonth.entries) {
       final month = monthlyEntry.key;
       final expensesPerDay = monthlyEntry.value;
+      final expensesOfMonth =
+          expensesPerDay.values.expand((element) => element).toList();
 
       items.add(CalendarMonthListItem(calendarMonth: month));
+      items.add(MonthSummaryLlistItem(
+          totalExpenses: expensesOfMonth.totalExpenses(currency),
+          totalIncome: expensesOfMonth.totalIncome(currency)));
       for (final dailyEntry in expensesPerDay.entries) {
         final day = dailyEntry.key;
         final records = dailyEntry.value;

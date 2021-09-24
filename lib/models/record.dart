@@ -238,3 +238,25 @@ class CreateRecord {
 
   Map<String, dynamic> toJson() => _$CreateRecordToJson(this);
 }
+
+extension TotalIncome on List<Record> {
+  Amount totalIncome(String _currency) {
+    if (this.isEmpty) {
+      return Amount.zero(_currency);
+    }
+    final currency = this.first.amount.currency;
+    return this.where((record) => record.type == Type.INCOME).fold(
+        Amount.zero(currency),
+        (previousValue, element) => previousValue + element.amount);
+  }
+
+  Amount totalExpenses(String _currency) {
+    if (this.isEmpty) {
+      return Amount.zero(_currency);
+    }
+    final currency = this.first.amount.currency;
+    return this.where((record) => record.type != Type.INCOME).fold(
+        Amount.zero(currency),
+        (previousValue, element) => previousValue + element.amount);
+  }
+}
